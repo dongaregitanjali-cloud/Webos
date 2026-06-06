@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purple WebOS Pro - Premium Edition</title>
+    <style>
+        :root {
+            --bg-glass: rgba(30, 25, 40, 0.65);
+            --bg-glass-dark: rgba(18, 12, 26, 0.96);
+            --accent-purple: #c599ff;
+            --text-light: #f1f1f1;
+            --window-bg: #161224;
+        }
+
+        body {
+            margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #23123a 0%, #090712 100%);
+            height: 100vh; color: var(--text-light); user-select: none;
+        }
+
+        /* --- BOOT ANIMATION SCREEN --- */
+        #boot-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 99999999;
+            transition: opacity 0.5s ease-out;
+        }
+        #boot-screen img {
+            width: 240px; height: auto; margin-bottom: 30px;
+        }
+        .boot-loader {
+            width: 200px; height: 4px; background: #222; border-radius: 2px; overflow: hidden;
+        }
+        .boot-progress {
+            width: 0%; height: 100%; background: linear-gradient(90deg, #6a4bc4, var(--accent-purple));
+            animation: bootLoad 3s forwards linear;
+        }
+        @keyframes bootLoad {
+            0% { width: 0%; }
+            50% { width: 45%; }
+            70% { width: 75%; }
+            100% { width: 100%; }
+        }
+
+        /* --- SIMULATED AUTH SYSTEM SCREEN --- */
+        #auth-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, #1b0f30 0%, #05030a 100%);
+            display: none; align-items: center; justify-content: center; z-index: 9999999;
+            transition: opacity 0.4s ease-out;
+        }
+        .auth-card {
+            background: rgba(22, 16, 36, 0.85); border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px); border-radius: 20px; width: 360px; padding: 35px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6); text-align: center;
+        }
+        .auth-card h2 { margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #fff; }
+        .auth-card p { margin: 0 0 25px 0; font-size: 13px; color: #aaa; }
+        .auth-group { text-align: left; margin-bottom: 18px; }
+        .auth-group label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-purple); margin-bottom: 6px; font-weight: 600; }
+        .auth-input { width: 100%; box-sizing: border-box; background: #0c0817; border: 1px solid #32264f; color: white; padding: 10px 14px; border-radius: 8px; outline: none; font-size: 14px; }
+        .auth-input:focus { border-color: var(--accent-purple); box-shadow: 0 0 8px rgba(197, 153, 255, 0.2); }
+        .auth-btn { width: 100%; background: #6a4bc4; border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; margin-top: 10px; transition: background 0.2s; }
+        .auth-btn:hover { background: #7c5cd6; }
+        .auth-switch-link { margin-top: 20px; font-size: 13px; color: #aaa; }
+        .auth-switch-link span { color: var(--accent-purple); cursor: pointer; font-weight: 600; text-decoration: underline; }
+        .auth-error { color: #ff5c5c; font-size: 13px; margin-top: 12px; display: none; text-align: center; font-weight: 500; }
+
+        /* Desktop Space Grid */
+        #desktop {
+            position: absolute; top: 0; left: 0; width: 100%; height: calc(100vh - 65px);
+            padding: 20px; box-sizing: border-box;
+            display: grid; grid-template-columns: repeat(auto-fill, 90px);
+            grid-template-rows: repeat(auto-fill, 95px); grid-auto-flow: column; gap: 15px;
+            opacity: 0; transition: opacity 0.5s ease-in; pointer-events: none;
+        }
+
+        /* Home Wallpaper Context Options */
+        #context-menu {
+            position: absolute; display: none; background: var(--bg-glass-dark);
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 5px 0;
+            z-index: 100000; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        .menu-item { padding: 8px 20px; cursor: pointer; font-size: 13px; transition: background 0.2s; }
+        .menu-item:hover { background: rgba(255,255,255,0.1); color: var(--accent-purple); }
+
+        /* Icon Grid Styling */
+        .desktop-icon {
+            width: 85px; height: 90px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; cursor: pointer; border-radius: 10px; text-align: center;
+        }
+        .desktop-icon:hover { background: rgba(255,255,255,0.08); }
+        .desktop-icon .icon-img {
+            width: 48px; height: 48px; background: rgba(255,255,255,0.08); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 5px; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .desktop-icon span { font-size: 11px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Window Framework */
+        .window {
+            position: absolute; top: 80px; left: 120px; width: 640px; height: 440px;
+            background: var(--window-bg); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.6); display: flex; flex-direction: column; overflow: hidden;
+            transform: scale(0.95); opacity: 0; pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        .window.active { opacity: 1; transform: scale(1); pointer-events: all; }
+        .window.minimized { opacity: 0 !important; transform: scale(0.8) translateY(200px) !important; pointer-events: none !important; }
+
+        .window-header {
+            background: #1e1930; padding: 10px 15px; cursor: move;
+            display: flex; justify-content: space-between; align-items: center; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .window-controls { display: flex; gap: 8px; }
+        .control-btn { width: 14px; height: 14px; border: none; border-radius: 50%; cursor: pointer; }
+        .btn-close { background: #ff5c5c; }
+        .btn-min { background: #ffbd44; }
+        .window-content { flex-grow: 1; padding: 15px; overflow: auto; background: #110e1c; }
+
+        /* Global Framework Buttons & Inputs */
+        .sys-btn { background: #6a4bc4; border: none; color: white; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .sys-btn:hover { background: #7c5cd6; }
+        .sys-input { background: #0e0a1a; border: 1px solid #3b2f5c; color: white; padding: 6px 12px; border-radius: 6px; outline: none; }
+        .code-textarea { font-family: 'Consolas', 'Courier New', monospace; background: #0a0812; border: 1px solid #32264f; color: #aeffb1; padding: 10px; resize: none; border-radius: 8px; outline: none; }
+
+        /* SlidePoint Engine Classes */
+        .slidepoint-layout { display: flex; height: 100%; gap: 10px; }
+        .slidepoint-sidebar { width: 130px; background: #151124; border-right: 1px solid rgba(255,255,255,0.05); padding: 5px; display: flex; flex-direction: column; gap: 5px; }
+        .slide-thumb { height: 70px; background: #251f3d; border: 1px solid #3d325c; border-radius: 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: inherit; }
+        .slide-thumb.active { border-color: var(--accent-purple); background: #312752; }
+        .slide-canvas { flex-grow: 1; border-radius: 8px; padding: 25px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; position: relative; transition: all 0.4s ease-in-out; }
+        .slide-canvas input, .slide-canvas textarea { border: none; outline: none; background: transparent; text-align: center; width: 100%; resize: none; color: inherit; }
+        .slide-canvas .title-in { font-size: 30px; font-weight: bold; margin-bottom: 12px; }
+        .slide-canvas .body-in { font-size: 16px; }
+        .tmpl-light { background: #f5f5fa !important; color: #333 !important; }
+        .tmpl-dark { background: #1f1f26 !important; color: #fff !important; }
+        .tmpl-purple { background: #4a148c !important; color: #e1bee7 !important; }
+        .tmpl-sunset { background: linear-gradient(45deg, #ff512f, #dd2476) !important; color: white !important; }
+
+        /* Notepad Specific Dropdowns */
+        .notepad-menu-bar { background: #1a152a; padding: 5px 10px; display: flex; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+        .notepad-menu-item { cursor: pointer; padding: 2px 6px; border-radius: 4px; position: relative; }
+        .notepad-menu-item:hover { background: rgba(255,255,255,0.1); color: var(--accent-purple); }
+        .notepad-dropdown { display: none; position: absolute; top: 22px; left: 0; background: #1e1930; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; min-width: 120px; z-index: 10000; }
+        .notepad-dropdown div { padding: 6px 12px; color: #fff; cursor: pointer; }
+        .notepad-dropdown div:hover { background: rgba(255,255,255,0.1); color: var(--accent-purple); }
+        .notepad-menu-item:hover .notepad-dropdown { display: block; }
+        #notepad-text { width: 100%; height: calc(100% - 30px); background: #141122; border: none; color: #fff; padding: 10px; box-sizing: border-box; resize: none; outline: none; font-family: monospace; font-size: 14px; }
+
+        /* Storage Element Bars */
+        .storage-bar-container { background: #251f3a; width: 100%; height: 20px; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .storage-fill { background: #9d66ff; height: 100%; width: 42%; }
+
+        /* Paint Canvas Properties */
+        .paint-holder { background: white; border: 1px solid #333; cursor: crosshair; display: block; margin: 0 auto; }
+
+        /* Browser Breakout Panel Alert Box */
+        #browser-breakout-view {
+            display: none; height: 100%; background: #110e1c; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center; padding: 30px; box-sizing: border-box;
+        }
+
+        /* --- WINDOWS 11 STYLE CENTERED TASKBAR & START BUTTON --- */
+        #taskbar {
+            position: absolute; bottom: -80px; left: 50%; transform: translateX(-50%); height: 54px;
+            background: var(--bg-glass); display: flex; align-items: center; justify-content: center; padding: 0 18px;
+            backdrop-filter: blur(25px); border-radius: 28px; border: 1px solid rgba(255, 255, 255, 0.12); z-index: 999999;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4); gap: 4px; transition: bottom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .taskbar-icon {
+            font-size: 24px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; border-radius: 8px; transition: background 0.2s, transform 0.2s;
+        }
+        .taskbar-icon:hover { background: rgba(255, 255, 255, 0.1); transform: scale(1.1) translateY(-2px); }
+        .taskbar-icon.start-btn { font-size: 26px; }
+
+        /* Windows 11 Centered Start Panel Popup layout */
+        #start-menu {
+            position: absolute; bottom: 74px; left: 50%; transform: translateX(-50%) translateY(20px);
+            width: 360px; height: 470px; background: var(--bg-glass-dark); border-radius: 24px;
+            display: flex; flex-direction: column; padding: 18px; box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.15); opacity: 0; pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s; z-index: 99999;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7); backdrop-filter: blur(20px);
+        }
+        #start-menu.active { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: all; }
+        .start-search { width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: white; box-sizing: border-box; margin-bottom: 15px; outline: none; font-size: 13px; }
+        .start-search:focus { border-color: var(--accent-purple); background: rgba(255,255,255,0.12); }
+        .start-apps-container { flex-grow: 1; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; padding-right: 2px; }
+        .start-item { padding: 9px 12px; cursor: pointer; border-radius: 10px; display: flex; align-items: center; gap: 14px; font-size: 14px; transition: background 0.2s; }
+        .start-item:hover { background: rgba(255,255,255,0.08); color: var(--accent-purple); }
+    </style>
+</head>
+<body oncontextmenu="openContextMenu(event); return false;" onclick="closeContextMenu()">
+
+    <!-- BOOT SYSTEM OVERLAY LAYER -->
+    <div id="boot-screen">
+        <img src="image.png" alt="WebOS Logo">
+        <div class="boot-loader">
+            <div class="boot-progress"></div>
+        </div>
+    </div>
+
+    <!-- SIGN UP / SIGN IN INTERFACES -->
+    <div id="auth-screen">
+        <!-- Panel Mode 1: Create Account Module (Default View) -->
+        <div class="auth-card" id="register-module">
+            <h2>Create your account</h2>
+            <p>Setup a local secure space environment</p>
+            <div class="auth-group">
+                <label>Username</label>
+                <input type="text" id="reg-username" class="auth-input" placeholder="e.g. developer">
+            </div>
+            <div class="auth-group">
+                <label>Password</label>
+                <input type="password" id="reg-password" class="auth-input" placeholder="••••••••">
+            </div>
+            <button class="auth-btn" onclick="handleRegistrationSubmit()">Initialize System</button>
+            <div class="auth-error" id="reg-error"></div>
+            <div class="auth-switch-link">
+                Already have an account? <span onclick="switchAuthMode('login')">Sign in</span>
+            </div>
+        </div>
+
+        <!-- Panel Mode 2: Log In Module -->
+        <div class="auth-card" id="login-module" style="display:none;">
+            <h2>Welcome Back</h2>
+            <p>Sign in to your WebOS instance workspace</p>
+            <div class="auth-group">
+                <label>Username</label>
+                <input type="text" id="log-username" class="auth-input" placeholder="developer">
+            </div>
+            <div class="auth-group">
+                <label>Password</label>
+                <input type="password" id="log-password" class="auth-input" placeholder="••••••••">
+            </div>
+            <button class="auth-btn" onclick="handleLoginSubmit()">Unlock Desktop</button>
+            <div class="auth-error" id="log-error"></div>
+            <div class="auth-switch-link">
+                Don't have an account? <span onclick="switchAuthMode('register')">Create one</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desktop Workspace Grid Icons -->
+    <div id="desktop">
+        <div class="desktop-icon" onclick="openWindow('mypc-window')"><div class="icon-img">🖥️</div><span>My PC</span></div>
+        <div class="desktop-icon" onclick="openWindow('games-window')"><div class="icon-img">🎮</div><span>Games</span></div>
+        <div class="desktop-icon" onclick="openWindow('notepad-window')"><div class="icon-img">📝</div><span>Notepad</span></div>
+        <div class="desktop-icon" onclick="openWindow('slidepoint-window')"><div class="icon-img">📊</div><span>SlidePoint</span></div>
+        <div class="desktop-icon" onclick="openWindow('paint-window')"><div class="icon-img">🎨</div><span>Paint Canvas</span></div>
+        <div class="desktop-icon" onclick="openWindow('python-window')"><div class="icon-img">🐍</div><span>Python IDE</span></div>
+        <div class="desktop-icon" onclick="openWindow('html-window')"><div class="icon-img">🌐</div><span>HTML Editor</span></div>
+        <div class="desktop-icon" onclick="openWindow('browser-window')"><div class="icon-img">🌍</div><span>Web Browser</span></div>
+    </div>
+
+    <!-- Wallpaper Right Click Action Shell -->
+    <div id="context-menu">
+        <div class="menu-item" onclick="refreshDesktop()">🔄 Refresh Workspace</div>
+        <div class="menu-item" onclick="createShortcutPrompt()">🔗 Add Link Shortcut</div>
+        <div class="menu-item" onclick="createNewFolder()">📁 Build Folder Directory</div>
+        <div class="menu-item" onclick="openWindow('notepad-window')">📝 Create Text Document (.txt)</div>
+    </div>
+
+    <!-- 1. MY PC ENGINE APP -->
+    <div class="window" id="mypc-window">
+        <div class="window-header">
+            <span>🖥️ My PC Disk Sector Center</span>
+            <div class="window-controls">
+                <button class="control-btn btn-min" onclick="minimizeWindow('mypc-window')"></button>
+                <button class="control-btn btn-close" onclick="closeWindow('mypc-window')"></button>
+            </div>
+        </div>
+        <div class="window-content">
+            <h3>System Logical Storage Block (C:)</h3>
+            <div class="storage-bar-container"><div class="storage-fill" id="disk-fill"></div></div>
+            <p id="storage-label">Polling storage variables...</p>
+            <hr style="border-color:#2a223d; margin:20px 0;">
+            <h4>Virtual File Registry Tree</h4>
+            <div id="file-registry-list">No registry links indexed.</div>
+        </div>
+    </div>
+
+    <!-- 2. SYSTEM MINI GAMES HUB -->
+    <div class="window" id="games-window" style="width: 740px; height: 480px;">
+        <div class="window-header">
+            <span>🎮 Web OS Arcade Portal</span>
+            <div class="window-controls">
+                <button class="control-btn btn-min" onclick="minimizeWindow('games-window')"></button>
+                <button class="control-btn btn-close" onclick="closeWindow('games-window')"></button>
+            </div>
+        </div>
+        <div class="window-content" style="padding:0; display:flex;">
+            <div style="width:180px; background:#191428; border-right:1px solid #2d2346; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                <button class="sys-btn" onclick="loadArcadeGame('https://mariosouto.com/flappy-bird-devsouto/')">Flappy Bird</button>
+                <button class="sys-btn" onclick="loadArcadeGame('https://playtictactoe.org/')">TicTacToe</button>
+                <button class="sys-btn" onclick="loadArcadeGame('https://pacman.live/play.html')">Pacman Space</button>
+                <button class="sys-btn" onclick="loadArcadeGame('https://tetris.com/play-tetris')">Tetris Pro</button>
+                <button class="sys-btn" onclick="loadArcadeGame('https://hextris.io/')">Hextris Block</button>
+                <button class="sys-btn" onclick="loadArcadeGame('https://2048game.com/')">2048 Core</button>
+            </div>
+            <div style="flex-grow:1; background:#000;"><iframe id="arcade-frame" src="about:blank" style="width:100%; height:100%; border:none;"></iframe></div>
+        </div>
+    </div>
+
+    <!-- 3. NOTEPAD PRO RUNTIME -->
+    <div class="window" id="notepad-window" style="width: 560px; height: 400px;">
+        <div class="window-header">
+            <span id="notepad-title">📝 Notepad - Untitled.txt</span>
+            <div class="window-controls">
+                <button class="control-btn btn-min" onclick="minimizeWindow('notepad-window')"></button>
+                <button class="control-btn btn-close" onclick="closeWindow('notepad-window')"></button>
+            </div>
+        </div>
+        <div class="notepad-menu-bar">
+            <div class="notepad-menu-item">File
+                <div class="notepad-dropdown">
+                    <div onclick="notepadNew()">📄 New</div>
+                    <div onclick="notepadOpenPrompt()">📂 Open Asset...</div>
+                    <div onclick="notepadSave()">💾 Save File</div>
+                    <div onclick="notepadSaveAs()">📝 Save As...</div>
+                </div>
+            </div>
+            <div class="notepad-menu-item">Edit</div>
+        </div>
+        <textarea id="notepad-text" placeholder="Write text array buffers cleanly here..."></textarea>
+    </div>
+
+    <!-- 4. SLIDEPOINT SLIDE CREATOR APP -->
+    <div class="window" id="slidepoint-window" style="width: 780px; height: 500px;">
+        <div class="window-header">
+            <span>📊 SlidePoint Engine Panel</span>
+            <div class="window-controls">
+                <button class="control-btn btn-min" onclick="minimizeWindow('slidepoint-window')"></button>
+                <button class="control-btn btn-close" onclick="closeWindow('slidepoint-window')"></button>
+            </div>
+        </div>
+        <div style="background:#1b162b; padding:6px; display:flex; gap:8px; align-items:center; border-bottom:1px solid #332b4d;">
+            <button class="sys-btn" onclick="addNewSlide()">+ Add Slide</button>
+            <button class="sys-btn" onclick="presentFullMode()">▶ Present Deck</button>
+            <span style="color:#666;">|</span>
+            <select id="slide-tmpl" onchange="applySlideCustoms()" style="background:#141022; color:white; border:1px solid #3d325c; padding:4px; border-radius:4px;">
+                <option value="tmpl-light">Light Sheet</option>
+                <option value="tmpl-dark">Charcoal Dark</option>
+                <option value="tmpl-purple">Cyber Purple</option>
+                <option value="tmpl-sunset">Sunset Glow</option>
+            </select>
+            <select id="slide-trans" onchange="applySlideCustoms()" style="background:#141022; color:white; border:1px solid #3d325c; padding:4px; border-radius:4px;">
+                <option value="none">No Motion</option>
+                <option value="fade">Cross Fade</option>
+                <option value="slide">Push Slide</option>
+                <option value="zoom">Pop Zoom</option>
+            </select>
+            <button class="sys-btn" onclick="document.getElementById('slide-img-picker').click()" style="background:#4262b5;">🖼️ Add Image</button>
+            <input type="file" id="slide-img-picker" accept="image/*" style="display:none;" onchange="loadSlideImage(event)">
+            <button class="sys-btn" onclick="deleteCurrentSlide()" style="background:#a62b2b; margin-left:auto;">Delete</button>
+        </div>
+        <div class="window-content" style="padding:0;">
+            <div class="slidepoint-layout">
+                <div class="slidepoint-sidebar" id="slide-thumbnail-strip"></div>
+                <div style="flex-grow:1; padding:15px; display:flex; flex-direction:column; gap:10px;">
+                    <div class="slide-canvas tmpl-light" id="main-slide-editor">
+                        <input type="text" class="title-in" id="slide-title" placeholder="Untitled Header Title" oninput="captureSlideData()">
+                        <textarea class="body-in" id="slide-body" placeholder="Provide presentation text criteria..." oninput="captureSlideData()"></textarea>
+                        <img id="slide-img-node" src="" style="max-height:100px; border-radius:6px; display:none; margin-top:8px; object-fit:contain;">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px; color:#999;" id="slide-indicator">Slide 1 of 1</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. PAINT STUDIO CANVAS WINDOW -->
+    <div class="window" id="paint-window" style="width:560px; height:440px;">
+        <div class="window-header">
+            <span>🎨 Paint Canvas Studio</span>
+            <div class="window-controls">
+                <button class="control-btn btn-min" onclick="minimizeWindow('paint-window')"></button>
+                <button class="control-btn btn-close" onclick="closeWindow('paint-window')"></button>
+            </div>
+        </div>
+        <div style="background:#1a152a; padding:6px; display:flex; gap:10px; align-items:center;">
+            <input type="color" id="brush-color" value="#c599ff" style="border:none; background:transparent; cursor:pointer;">
+            <input type="range" id="brush-size" min="2" max="20" value="6" style="width:80px;">
+            <button class="sys-btn" onclick="clearCanvasSurface()" style="background:#a62b2b; margin-left:auto;">Clear Board</button>
+        </div>
+        <div class="window-content" style="background:#222; padding:10px;">
+            <canvas id="paint-canvas-element" width="510" height="300" class="paint-holder"></canvas>
+        </div>
+    </div>
+
+    <!-- 6. PYTHON VIRTUAL CONSOLE IDE -->
+    <div class="window" id="python-window" style="width: 660px; height: 460px;">
+        <div class="window-header">
+            <span>🐍 Python Virtual Console IDE</span>
+            <div class="window-controls">
+                <button class="control-btn btn-min" onclick="minimizeWindow('python-window')"></button>
+                <button class="control-btn btn-close" onclick="closeWindow('python-window')"></button>
+            </div>
+        </div>
+        <div style="background:#1a152a; padding:8px; display:flex; gap:10px; border-bottom:1px solid rgba(255,255,255,0.06);">
+            <button class="sys-btn" onclick="executePythonCodeRuntime()" style="background:#10b981;">▶ Run Script</button>
+            <button class="sys-btn" onclick="document.getElementById('python-source').value = 'print(&quot;Hello, World!&quot;)\nfor i in range(5):\n    print(f&quot;Loop index: {i}&quot;)'" style="background:#3d325c;">🔄 Load Sample</button>
+        </div>
+        <div class="window-content" style="padding:0; display:flex; flex-direction:column; height:calc(100% - 45px);">
+            <textarea id="python-source" class="code-textarea" style="height:55%; border:none; border-radius:0;" placeholder="# Type your procedural python logic blocks here...&#10;print('System connection valid')"></textarea>
+            <div style="background:#05030a; border-top:2px solid #251e3a; height:45%; padding:10px; box-sizing:border-box; font-family:'Consolas', monospace; overflow-y:auto;">
+                <div style="color:#6a4bc4; font-size:11px; margin-bottom:5px; font-weight:bold;">VIRTUAL RUNTIME LOG TERMINAL:</div>
+                <pre id="python-terminal-out" style="margin:0; color:#fff; font-size:13px; white-space:pre-wrap;">Console idle. Click 'Run Script' to execute pipeline code structures.</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. LIVE SPLIT-SCREEN HTML DESIGNER -->
+    <div class="window" id="html-window" style="width: 760px; height: 480px;">
+        <div class="window-header">
+            <span>🌐 Real-time HTML Editor Hub</span>
+            <div class="window-controls">
+                <button class="control-btn btn-min" onclick="minimizeWindow('html-window')"></button>
+                <button class="control-btn btn-close" onclick="closeWindow('html-window')"></button>
+            </div>
+        </div>
+        <div class="window-content" style="padding:0; display:flex; height:100%;">
+            <textarea id="html-editor-source" class="code-textarea" style="width:50%; height:100%; border:none; border-radius:0; border-right:1px solid #251e3a; color:#ffd479;" placeholder="<!-- Type clean HTML DOM wrappers here -->" oninput="compileLiveHtmlPreview()"></textarea>
+            <div style="width:50%; height:100%; background:#fff; overflow:hidden;">
+                <iframe id="html-live-sandbox" style="width:100%; height:100%; border:none; background:#fff;"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. UPDATED PREMIUM WEB BROWSER ENGINE -->
+    <div class="window" id="browser-window" style="width:820px; height:520px;">
+        <div class="window-header">
+            <span>🌍 Web Browser Engine</span>
+            <div class="window-controls">
+                <button class="control-btn btn-min" onclick="minimizeWindow('browser-window')"></button>
+                <button class="control-btn btn-close" onclick="closeWindow('browser-window')"></button>
+            </div>
+        </div>
+        <div style="background:#1f1933; padding:8px 12px; display:flex; gap:8px; align-items:center; border-bottom:1px solid #2d244a;">
+            <div style="display:flex; gap:5px; margin-right:5px;">
+                <button class="sys-btn" style="padding:4px 8px;" onclick="launchDirectUrl('https://en.m.wikipedia.org')">🏠</button>
+            </div>
+            <input type="text" id="browser-url-bar" class="sys-input" style="flex-grow:1; font-family:monospace; font-size:13px;" value="https://en.m.wikipedia.org" onkeydown="if(event.key==='Enter') executeBrowserNavigation()">
+            <button class="sys-btn" onclick="executeBrowserNavigation()">Go</button>
+        </div>
+        <div style="background:#130e22; padding:6px 12px; display:flex; gap:10px; font-size:12px; border-bottom:1px solid #221a3a;">
+            <span style="color:#888; font-weight:bold;">Quick Links:</span>
+            <a href="#" style="color:var(--accent-purple); text-decoration:none;" onclick="launchDirectUrl('https://en.m.wikipedia.org')">Wikipedia</a> •
+            <a href="#" style="color:var(--accent-purple); text-decoration:none;" onclick="launchDirectUrl('https://www.bing.com')">Bing Search</a> •
+            <a href="#" style="color:var(--accent-purple); text-decoration:none;" onclick="launchDirectUrl('https://m.xkcd.com')">XKCD Comics</a> •
+            <a href="#" style="color:var(--accent-purple); text-decoration:none;" onclick="launchDirectUrl('https://html5gameportal.com')">HTML5 Games</a>
+        </div>
+        
+        <div class="window-content" style="padding:0; background:#fff; position:relative; height:calc(100% - 75px);">
+            <iframe id="browser-mainframe" src="https://en.m.wikipedia.org" style="width:100%; height:100%; border:none; background:#fff;"></iframe>
+            
+            <div id="browser-breakout-view">
+                <div style="font-size: 50px; margin-bottom: 10px;">🛡️</div>
+                <h3 style="margin: 5px 0 12px 0; color: #fff;">External Site Protection Activated</h3>
+                <p id="breakout-message" style="color: #aaa; font-size: 14px; max-width: 480px; margin: 0 auto 20px auto;">
+                    This site uses iframe restriction keys. Click below to launch it securely in a dedicated external pipeline frame.
+                </p>
+                <button class="sys-btn" id="breakout-launch-btn" style="padding: 10px 24px; font-size: 14px; background: #10b981;" onclick="openExternalBrowserTab()">
+                    🚀 Launch Site Safely
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WINDOWS 11 CENTERED START MENU HOUSING -->
+    <div id="start-menu">
+        <input type="text" id="start-search-node" class="start-search" placeholder="Type app target to lookup..." oninput="filterStartApps()">
+        <div class="start-apps-container" id="start-apps-box">
+            <div class="start-item" onclick="openWindow('mypc-window'); toggleStartMenu()">🖥️ <span>My PC Drive Management</span></div>
+            <div class="start-item" onclick="openWindow('games-window'); toggleStartMenu()">🎮 <span>Arcade Game Hub</span></div>
+            <div class="start-item" onclick="openWindow('notepad-window'); toggleStartMenu()">📝 <span>Notepad Text Logger</span></div>
+            <div class="start-item" onclick="openWindow('slidepoint-window'); toggleStartMenu()">📊 <span>SlidePoint Pro Deck</span></div>
+            <div class="start-item" onclick="openWindow('paint-window'); toggleStartMenu()">🎨 <span>Paint Canvas Studio</span></div>
+            <div class="start-item" onclick="openWindow('python-window'); toggleStartMenu()">🐍 <span>Python IDE Engine</span></div>
+            <div class="start-item" onclick="openWindow('html-window'); toggleStartMenu()">🌐 <span>Live HTML Document Editor</span></div>
+            <div class="start-item" onclick="openWindow('browser-window'); toggleStartMenu()">🌍 <span>Web Browser Engine</span></div>
+        </div>
+    </div>
+
+    <!-- WINDOWS 11 CENTRALIZED APP DOCK HANGER -->
+    <div id="taskbar">
+        <div class="taskbar-icon start-btn" onclick="toggleStartMenu()" style="filter: drop-shadow(0 0 4px var(--accent-purple));">🔮</div>
+        <span style="width:1px; height:24px; background:rgba(255,255,255,0.15); margin:0 4px;"></span>
+        <div class="taskbar-icon" onclick="handleTaskbarClick('mypc-window')">🖥️</div>
+        <div class="taskbar-icon" onclick="handleTaskbarClick('games-window')">🎮</div>
+        <div class="taskbar-icon" onclick="handleTaskbarClick('notepad-window')">📝</div>
+        <div class="taskbar-icon" onclick="handleTaskbarClick('slidepoint-window')">📊</div>
+        <div class="taskbar-icon" onclick="handleTaskbarClick('paint-window')">🎨</div>
+        <div class="taskbar-icon" onclick="handleTaskbarClick('python-window')">🐍</div>
+        <div class="taskbar-icon" onclick="handleTaskbarClick('html-window')">🌐</div>
+        <div class="taskbar-icon" onclick="handleTaskbarClick('browser-window')">🌍</div>
+    </div>
+
+    <script>
+        let layerDepth = 1000;
+        let virtualFileSystem = [{ name: "welcome_note.txt", content: "Developer environment initialized successfully with functional Web Browser links.", size: 90 }];
+        let currentOpenFilename = "welcome_note.txt";
+        let pendingExternalUrl = "";
+
+        // --- CORE APPLICATION LIFECYCLE (BOOT & AUTH) ---
+        window.addEventListener('DOMContentLoaded', () => {
+            // Loading sequence timer (3.2 seconds)
+            setTimeout(() => {
+                const bootScreen = document.getElementById('boot-screen');
+                bootScreen.style.opacity = '0';
+                setTimeout(() => {
+                    bootScreen.style.display = 'none';
+                    document.getElementById('auth-screen').style.display = 'flex';
+                }, 500);
+            }, 3200);
+        });
+
+        function switchAuthMode(mode) {
+            document.getElementById('reg-error').style.display = 'none';
+            document.getElementById('log-error').style.display = 'none';
+            if (mode === 'login') {
+                document.getElementById('register-module').style.display = 'none';
+                document.getElementById('login-module').style.display = 'block';
+            } else {
+                document.getElementById('login-module').style.display = 'none';
+                document.getElementById('register-module').style.display = 'block';
+            }
+        }
+
+        // --- FIXED INITIALIZATION ---
+        // Uses try/catch to bypass LocalStorage errors if the browser sandboxes the preview!
+        function handleRegistrationSubmit() {
+            const u = document.getElementById('reg-username').value.trim();
+            const p = document.getElementById('reg-password').value.trim();
+            const err = document.getElementById('reg-error');
+
+            if (!u || !p) {
+                err.innerText = "Please provide both a username and password.";
+                err.style.display = 'block';
+                return;
+            }
+
+            err.style.display = 'none';
+            try {
+                localStorage.setItem('webos_user_' + u.toLowerCase(), p);
+            } catch(e) {
+                console.warn('Sandboxed environment prevented LocalStorage save. Bypassing...');
+            }
+            initializeDesktopWorkspace();
+        }
+
+        function handleLoginSubmit() {
+            const u = document.getElementById('log-username').value.trim().toLowerCase();
+            const p = document.getElementById('log-password').value.trim();
+            const err = document.getElementById('log-error');
+
+            if (!u || !p) {
+                err.innerText = "Please fill in all layout credentials.";
+                err.style.display = 'block';
+                return;
+            }
+
+            try {
+                const savedPassword = localStorage.getItem('webos_user_' + u);
+                if (savedPassword && savedPassword === p) {
+                    err.style.display = 'none';
+                    initializeDesktopWorkspace();
+                } else if (!savedPassword) {
+                    // Safe fallback if localstorage is wiped or blocked
+                    err.style.display = 'none';
+                    initializeDesktopWorkspace();
+                } else {
+                    err.innerText = "Access denied. Invalid username or password.";
+                    err.style.display = 'block';
+                }
+            } catch(e) {
+                // If LocalStorage is completely blocked, just let them in to test
+                err.style.display = 'none';
+                initializeDesktopWorkspace();
+            }
+        }
+
+        function initializeDesktopWorkspace() {
+            const authScreen = document.getElementById('auth-screen');
+            const desk = document.getElementById('desktop');
+            const taskbar = document.getElementById('taskbar');
+
+            // Instantly hide the auth screen so it never gets stuck
+            authScreen.style.opacity = '0';
+            authScreen.style.display = 'none';
+                
+            // Unlock desktop grid
+            desk.style.opacity = '1';
+            desk.style.pointerEvents = 'all';
+            
+            // Slide taskbar up into place
+            taskbar.style.bottom = '10px';
+        }
+
+        // Context Menu Controls
+        function openContextMenu(e) {
+            let m = document.getElementById('context-menu');
+            m.style.display = 'block'; m.style.left = e.clientX + 'px'; m.style.top = e.clientY + 'px';
+        }
+        function closeContextMenu() { document.getElementById('context-menu').style.display = 'none'; }
+        function refreshDesktop() {
+            let d = document.getElementById('desktop'); d.style.opacity = '0.3';
+            setTimeout(() => d.style.opacity = '1', 250);
+        }
+        function createShortcutPrompt() {
+            let l = prompt("Enter Shortcut Target Title Name:"); if(!l) return;
+            injectIconToDesktop('🔗', l, "alert('Shortcut routing verified')");
+        }
+        function createNewFolder() {
+            let n = prompt("Enter directory workspace path folder name:", "New Directory"); if(!n) return;
+            injectIconToDesktop('📁', n, "alert('Directory operational context loaded')");
+        }
+        function injectIconToDesktop(sym, text, run) {
+            let div = document.createElement('div'); div.className = 'desktop-icon'; div.setAttribute('onclick', run);
+            div.innerHTML = `<div class="icon-img">${sym}</div><span>${text}</span>`;
+            document.getElementById('desktop').appendChild(div);
+        }
+
+        // Window Architecture Managers
+        function openWindow(id) {
+            const win = document.getElementById(id); win.classList.remove('minimized'); win.classList.add('active');
+            layerDepth++; win.style.zIndex = layerDepth;
+            if(id === 'notepad-window' && currentOpenFilename === 'welcome_note.txt') { document.getElementById('notepad-text').value = virtualFileSystem[0].content; }
+            if(id === 'paint-window') { setupPaintSurfaceEvents(); }
+            if(id === 'html-window') { compileLiveHtmlPreview(); }
+            updateMyPCStorage();
+        }
+        function closeWindow(id) { document.getElementById(id).classList.remove('active'); }
+        function minimizeWindow(id) { document.getElementById(id).classList.add('minimized'); }
+        
+        function toggleStartMenu() {
+            let m = document.getElementById('start-menu'); m.classList.toggle('active');
+            if(m.classList.contains('active')) { document.getElementById('start-search-node').value = ""; filterStartApps(); document.getElementById('start-search-node').focus(); }
+        }
+        function handleTaskbarClick(id) {
+            let win = document.getElementById(id);
+            if(win.classList.contains('active') && !win.classList.contains('minimized')) { minimizeWindow(id); } else { openWindow(id); }
+        }
+        function loadArcadeGame(url) { document.getElementById('arcade-frame').src = url; }
+
+        function filterStartApps() {
+            let q = document.getElementById('start-search-node').value.toLowerCase().trim();
+            document.querySelectorAll('.start-item').forEach(i => {
+                i.style.display = i.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
+            });
+        }
+
+        // --- SMART BYPASS BROWSER ENGINE MECHANICS ---
+        function executeBrowserNavigation() {
+            let urlField = document.getElementById('browser-url-bar');
+            let targetUrl = urlField.value.trim();
+
+            if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                if (targetUrl.includes('.') && !targetUrl.includes(' ')) {
+                    targetUrl = "https://" + targetUrl;
+                } else {
+                    targetUrl = "https://www.bing.com/search?q=" + encodeURIComponent(targetUrl);
+                }
+            }
+            launchDirectUrl(targetUrl);
+        }
+
+        function launchDirectUrl(url) {
+            document.getElementById('browser-url-bar').value = url;
+            let cleanUrl = url.toLowerCase();
+            if (cleanUrl.includes('poki.com') || cleanUrl.includes('google.com') || cleanUrl.includes('youtube.com')) {
+                pendingExternalUrl = url;
+                document.getElementById('browser-mainframe').style.display = 'none';
+                document.getElementById('browser-breakout-view').style.display = 'flex';
+                document.getElementById('breakout-message').innerText = `"${url}" uses strict frame protection keys. Click launch below to run it safely in an optimized workspace container.`;
+            } else {
+                document.getElementById('browser-breakout-view').style.display = 'none';
+                document.getElementById('browser-mainframe').style.display = 'block';
+                document.getElementById('browser-mainframe').src = url;
+            }
+        }
+
+        function openExternalBrowserTab() {
+            if(pendingExternalUrl) {
+                window.open(pendingExternalUrl, '_blank');
+            }
+        }
+
+        // --- NOTEPAD PROCESSING HOOKS ---
+        function notepadNew() { currentOpenFilename = ""; document.getElementById('notepad-text').value = ""; document.getElementById('notepad-title').innerText = "📝 Notepad - Untitled.txt"; }
+        function notepadSave() { if(!currentOpenFilename) return notepadSaveAs(); let txt = document.getElementById('notepad-text').value; let match = virtualFileSystem.find(f => f.name === currentOpenFilename); if(match) { match.content = txt; match.size = txt.length * 2; } updateMyPCStorage(); }
+        function notepadSaveAs() {
+            let n = prompt("Name file element registration output:", currentOpenFilename || "doc.txt"); if(!n) return;
+            let txt = document.getElementById('notepad-text').value;
+            let existing = virtualFileSystem.find(f => f.name === n);
+            if(existing) { existing.content = txt; existing.size = txt.length * 2; } else { virtualFileSystem.push({ name: n, content: txt, size: txt.length * 2 }); }
+            currentOpenFilename = n; document.getElementById('notepad-title').innerText = `📝 Notepad - ${n}`; updateMyPCStorage();
+        }
+        function notepadOpenPrompt() {
+            let msg = "Select target item index key name:\n"; virtualFileSystem.forEach(f => msg += `-> ${f.name}\n`);
+            let target = prompt(msg); if(!target) return;
+            let file = virtualFileSystem.find(f => f.name.toLowerCase() === target.toLowerCase().trim());
+            if(file) { currentOpenFilename = file.name; document.getElementById('notepad-text').value = file.content; document.getElementById('notepad-title').innerText = `📝 Notepad - ${file.name}`; } else { alert("Matching system node unindexed."); }
+        }
+
+        // --- PYTHON DESKTOP ENGINE EXECUTION ENGINE ---
+        function executePythonCodeRuntime() {
+            const code = document.getElementById('python-source').value;
+            const term = document.getElementById('python-terminal-out');
+            term.innerHTML = ""; term.style.color = "#aeffb1";
+            
+            let lines = code.split('\n');
+            let outputs = [];
+            let simulatedVariables = {};
+
+            try {
+                for(let i=0; i<lines.length; i++) {
+                    let line = lines[i].trim();
+                    if(!line || line.startsWith('#')) continue;
+
+                    if(line.startsWith('print(') && line.endsWith(')')) {
+                        let inner = line.slice(6, -1).trim();
+                        if(inner.startsWith('f"') || inner.startsWith("f'")) {
+                            let rawStr = inner.slice(2, -1);
+                            let resolvedStr = rawStr.replace(/\{([^}]+)\}/g, (m, g) => {
+                                let key = g.trim();
+                                return simulatedVariables[key] !== undefined ? simulatedVariables[key] : `NameError: '${key}' is not defined`;
+                            });
+                            outputs.push(resolvedStr);
+                        }
+                        else if((inner.startsWith('"') && inner.endsWith('"')) || (inner.startsWith("'") && inner.endsWith("'"))) {
+                            outputs.push(inner.slice(1, -1));
+                        } 
+                        else {
+                            outputs.push(simulatedVariables[inner] !== undefined ? simulatedVariables[inner] : eval(inner));
+                        }
+                    }
+                    else if(line.startsWith('for ') && line.includes(' in range(') && line.endsWith(':')) {
+                        let varPart = line.substring(4, line.indexOf(' in ')).trim();
+                        let numPart = line.substring(line.indexOf('range(') + 6, line.lastIndexOf(')')).trim();
+                        let loops = parseInt(numPart, 10);
+                        
+                        let loopLines = [];
+                        while(i + 1 < lines.length && (lines[i+1].startsWith('    ') || lines[i+1].startsWith('\t'))) {
+                            loopLines.push(lines[i+1].trim());
+                            i++;
+                        }
+
+                        for(let step = 0; step < loops; step++) {
+                            simulatedVariables[varPart] = step;
+                            loopLines.forEach(l => {
+                                if(l.startsWith('print(') && l.endsWith(')')) {
+                                    let innerLoop = l.slice(6, -1).trim();
+                                    if(innerLoop.startsWith('f"') || innerLoop.startsWith("f'")) {
+                                        let rawStr = innerLoop.slice(2, -1);
+                                        let resolvedStr = rawStr.replace(/\{([^}]+)\}/g, (m, g) => {
+                                            let key = g.trim();
+                                            return simulatedVariables[key] !== undefined ? simulatedVariables[key] : `NameError: '${key}'`;
+                                        });
+                                        outputs.push(resolvedStr);
+                                    } else {
+                                        outputs.push(simulatedVariables[innerLoop] !== undefined ? simulatedVariables[innerLoop] : innerLoop);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    else if(line.includes('=')) {
+                        let parts = line.split('=');
+                        let varName = parts[0].trim();
+                        let varVal = parts[1].trim();
+                        if((varVal.startsWith('"') && varVal.endsWith('"')) || (varVal.startsWith("'") && varVal.endsWith("'"))) {
+                            simulatedVariables[varName] = varVal.slice(1, -1);
+                        } else {
+                            simulatedVariables[varName] = eval(varVal);
+                        }
+                    }
+                }
+                term.textContent = outputs.length > 0 ? outputs.join('\n') : "Script completed execution with 0 pipeline output values.";
+            } catch(err) {
+                term.style.color = "#ff6b6b";
+                term.textContent = `Traceback (Runtime Error Exception):\n  Line execution failed parsing string literals.\nError: ${err.message}`;
+            }
+        }
+
+        // --- SPLIT-SCREEN REAL-TIME HTML GENERATOR CORE ---
+        function compileLiveHtmlPreview() {
+            const src = document.getElementById('html-editor-source');
+            if(!src.value) {
+                src.value = `<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: sans-serif; text-align: center; color: #333; padding-top: 30px; }\n    h1 { color: #6a4bc4; }\n  </style>\n</head>\n<body>\n  <h1>Hello WebOS!</h1>\n  <p>Edit this split-screen layout code on the left to paint ideas live.</p>\n</body>\n</html>`;
+            }
+            const iframe = document.getElementById('html-live-sandbox');
+            const targetDoc = iframe.contentDocument || iframe.contentWindow.document;
+            targetDoc.open();
+            targetDoc.write(src.value);
+            targetDoc.close();
+        }
+
+        // --- SLIDEPOINT RECURSIVE ENGINE LOGIC ---
+        let deckArray = [{ title: "Presentation Design Setup", body: "Windows 11 alignment configuration working cleanly.", template: "tmpl-dark", transition: "none", image: "" }];
+        let activeSlideIdx = 0;
+
+        function refreshSlidePointBoard() {
+            let cur = deckArray[activeSlideIdx];
+            document.getElementById('slide-title').value = cur.title;
+            document.getElementById('slide-body').value = cur.body;
+            document.getElementById('slide-tmpl').value = cur.template;
+            document.getElementById('slide-trans').value = cur.transition;
+            
+            let canvas = document.getElementById('main-slide-editor');
+            canvas.className = `slide-canvas ${cur.template}`;
+            
+            let imgNode = document.getElementById('slide-img-node');
+            if(cur.image) { imgNode.src = cur.image; imgNode.style.display = 'block'; } else { imgNode.style.display = 'none'; }
+            
+            document.getElementById('slide-indicator').innerText = `Slide ${activeSlideIdx + 1} of ${deckArray.length}`;
+            
+            let strip = document.getElementById('slide-thumbnail-strip'); strip.innerHTML = "";
+            deckArray.forEach((slide, idx) => {
+                let thumb = document.createElement('div'); thumb.className = `slide-thumb ${idx === activeSlideIdx ? 'active' : ''} ${slide.template}`;
+                thumb.innerHTML = `<b style="font-size:10px; text-overflow:ellipsis; white-space:nowrap; max-width:100px; overflow:hidden;">${slide.title || 'Slide'}</b><span style="font-size:9px; opacity:0.6;">#${idx+1}</span>`;
+                thumb.onclick = () => { triggerSlideMotion(idx); };
+                strip.appendChild(thumb);
+            });
+        }
+        function addNewSlide() { deckArray.push({ title: "New Deck Slate", body: "Content parameters initialization.", template: "tmpl-light", transition: "none", image: "" }); triggerSlideMotion(deckArray.length - 1); }
+        function captureSlideData() { deckArray[activeSlideIdx].title = document.getElementById('slide-title').value; deckArray[activeSlideIdx].body = document.getElementById('slide-body').value; }
+        function applySlideCustoms() { deckArray[activeSlideIdx].template = document.getElementById('slide-tmpl').value; deckArray[activeSlideIdx].transition = document.getElementById('slide-trans').value; refreshSlidePointBoard(); }
+        function loadSlideImage(e) {
+            let f = e.target.files[0]; if(!f) return;
+            let r = new FileReader(); r.onload = function(evt) { deckArray[activeSlideIdx].image = evt.target.result; refreshSlidePointBoard(); }; r.readAsDataURL(f);
+        }
+        function deleteCurrentSlide() { if(deckArray.length <= 1) return alert("Deck timeline demands minimum 1 active slide frame."); deckArray.splice(activeSlideIdx, 1); activeSlideIdx = 0; refreshSlidePointBoard(); }
+        
+        function triggerSlideMotion(target) {
+            let editor = document.getElementById('main-slide-editor');
+            let trans = deckArray[target].transition;
+            if(trans === 'fade') editor.style.opacity = '0';
+            else if(trans === 'slide') { editor.style.transform = 'translateX(80px)'; editor.style.opacity = '0'; }
+            else if(trans === 'zoom') { editor.style.transform = 'scale(0.6)'; editor.style.opacity = '0'; }
+            setTimeout(() => { activeSlideIdx = target; refreshSlidePointBoard(); editor.style.opacity = '1'; editor.style.transform = 'translateX(0) scale(1)'; }, 150);
+        }
+        
+        function presentFullMode() {
+            let stage = document.createElement('div'); stage.style = "position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:9999999; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; box-sizing:border-box;";
+            let idx = 0;
+            let draw = () => {
+                let data = deckArray[idx]; stage.className = data.template;
+                let imgMarkup = data.image ? `<img src="${data.image}" style="max-height:320px; object-fit:contain; border-radius:8px; margin-top:20px;">` : '';
+                stage.innerHTML = `<h1 style="font-size:52px; font-weight:bold; margin-bottom:15px; background:none; text-align:center;">${data.title}</h1><p style="font-size:24px; max-width:800px; text-align:center;">${data.body}</p>${imgMarkup}<div style="position:absolute; bottom:20px; font-size:12px; opacity:0.6;">Click to run next frame | Press [ESC] to bounce out</div>`;
+            };
+            stage.onclick = () => { idx++; if(idx >= deckArray.length) document.body.removeChild(stage); else draw(); };
+            document.addEventListener('keydown', function esc(e) { if(e.key === 'Escape') { document.body.removeChild(stage); document.removeEventListener('keydown', esc); } });
+            draw(); document.body.appendChild(stage);
+        }
+
+        // --- PAINT CANVAS SUBROUTINES ---
+        let cv = document.getElementById('paint-canvas-element');
+        let cx = cv.getContext('2d');
+        let drawing = false;
+        let paintBound = false;
+
+        function setupPaintSurfaceEvents() {
+            if(paintBound) return;
+            cx.lineCap = 'round'; cx.lineJoin = 'round';
+            cv.onmousedown = (e) => { drawing = true; paintTrack(e); };
+            cv.onmousemove = paintTrack;
+            window.addEventListener('mouseup', () => { cx.beginPath(); drawing = false; });
+            paintBound = true;
+        }
+        function paintTrack(e) {
+            if(!drawing) return;
+            let r = cv.getBoundingClientRect();
+            let x = e.clientX - r.left; let y = e.clientY - r.top;
+            cx.lineWidth = document.getElementById('brush-size').value;
+            cx.strokeStyle = document.getElementById('brush-color').value;
+            cx.lineTo(x, y); cx.stroke(); cx.beginPath(); cx.moveTo(x, y);
+        }
+        function clearCanvasSurface() { cx.clearRect(0, 0, cv.width, cv.height); }
+
+        // --- STORAGE METER METRICS ---
+        function updateMyPCStorage() {
+            let base = 42.10; let list = "<ul style='padding-left:15px; margin:5px 0;'>"; let added = 0;
+            virtualFileSystem.forEach(f => {
+                added += (f.size / 1024);
+                list += `<li style="color:#c599ff; font-family:monospace; margin-bottom:3px; cursor:pointer;" onclick="currentOpenFilename='${f.name}'; openWindow('notepad-window'); document.getElementById('notepad-text').value=\`${f.content}\`; document.getElementById('notepad-title').innerText='📝 Notepad - ${f.name}';">📄 ${f.name} (${f.size} B)</li>`;
+            });
+            document.getElementById('file-registry-list').innerHTML = list + "</ul>";
+            let total = (base + added).toFixed(4);
+            document.getElementById('disk-fill').style.width = ((total / 128) * 100) + "%";
+            document.getElementById('storage-label').innerText = `${total} GB allocated / 128 GB partition threshold`;
+        }
+
+        // --- MOUSE MOVE DRAG BINDERS ---
+        document.querySelectorAll('.window').forEach(w => {
+            const h = w.querySelector('.window-header');
+            h.onmousedown = function(e) {
+                if(e.target.classList.contains('control-btn') || e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                layerDepth++; w.style.zIndex = layerDepth;
+                let sx = e.clientX - w.getBoundingClientRect().left; let sy = e.clientY - w.getBoundingClientRect().top;
+                document.onmousemove = function(evt) { w.style.left = (evt.clientX - sx) + 'px'; w.style.top = (evt.clientY - sy) + 'px'; };
+                document.onmouseup = function() { document.onmousemove = null; document.onmouseup = null; };
+            };
+            h.ondragstart = () => false;
+        });
+
+        refreshSlidePointBoard();
+    </script>
+</body>
+</html>
+
+```
